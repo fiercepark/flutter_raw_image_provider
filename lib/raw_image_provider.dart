@@ -1,9 +1,29 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
-import 'package:crypto/crypto.dart';
+
+/// Raw pixels data of an image
+class RawImageData {
+  final Uint8List pixels;
+  final int width;
+  final int height;
+  final ui.PixelFormat pixelFormat;
+
+  _RawImageKey? _key;
+
+  RawImageData(
+    this.pixels,
+    this.width,
+    this.height, {
+    this.pixelFormat = ui.PixelFormat.rgba8888,
+  });
+  _RawImageKey _obtainKey() {
+    return _key ??=
+        _RawImageKey(width, height, pixelFormat.index, md5.convert(pixels));
+  }
+}
 
 /// Decodes the given [image] (raw image pixel data) as an image ('dart:ui')
 class RawImageProvider extends ImageProvider<_RawImageKey> {
@@ -19,7 +39,8 @@ class RawImageProvider extends ImageProvider<_RawImageKey> {
   });
 
   @override
-  ImageStreamCompleter load(_RawImageKey key, DecoderCallback decode) {
+  ImageStreamCompleter loadImage(
+      _RawImageKey key, ImageDecoderCallback decode) {
     return MultiFrameImageStreamCompleter(
       codec: _loadAsync(key),
       scale: scale ?? 1.0,
@@ -61,6 +82,11 @@ class _RawImageKey {
   _RawImageKey(this.w, this.h, this.format, this.dataHash);
 
   @override
+  int get hashCode {
+    return hashValues(w, h, format, dataHash.hashCode);
+  }
+
+  @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
@@ -69,31 +95,5 @@ class _RawImageKey {
         other.h == h &&
         other.format == format &&
         other.dataHash == dataHash;
-  }
-
-  @override
-  int get hashCode {
-    return hashValues(w, h, format, dataHash.hashCode);
-  }
-}
-
-/// Raw pixels data of an image
-class RawImageData {
-  final Uint8List pixels;
-  final int width;
-  final int height;
-  final ui.PixelFormat pixelFormat;
-
-  RawImageData(
-    this.pixels,
-    this.width,
-    this.height, {
-    this.pixelFormat = ui.PixelFormat.rgba8888,
-  });
-
-  _RawImageKey? _key;
-  _RawImageKey _obtainKey() {
-    return _key ??=
-        _RawImageKey(width, height, pixelFormat.index, md5.convert(pixels));
   }
 }
